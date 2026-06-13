@@ -1,12 +1,16 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import { LayoutDashboard, Receipt, TrendingUp, X, LogOut } from 'lucide-react'; // ← Receipt added
+import {
+  LayoutDashboard, Receipt, Wallet, Target, TrendingUp, X, LogOut,
+} from 'lucide-react';
 
-// ── UPDATED: added Transactions entry ──
+// ── UPDATED: added Accounts + Budgets ──
 const navItems = [
   { label: 'Dashboard',    icon: LayoutDashboard, to: '/dashboard'    },
   { label: 'Transactions', icon: Receipt,          to: '/transactions' },
+  { label: 'Accounts',     icon: Wallet,           to: '/accounts'    },
+  { label: 'Budgets',      icon: Target,           to: '/budgets'     },
 ];
 
 const Sidebar = ({ isOpen, onClose }) => {
@@ -14,7 +18,6 @@ const Sidebar = ({ isOpen, onClose }) => {
 
   return (
     <>
-      {/* Mobile overlay */}
       {isOpen && (
         <div
           className="fixed inset-0 z-40 bg-black bg-opacity-30 md:hidden"
@@ -22,7 +25,6 @@ const Sidebar = ({ isOpen, onClose }) => {
         />
       )}
 
-      {/* Sidebar panel */}
       <aside
         className={`
           fixed top-0 left-0 h-full z-50 w-64 bg-white border-r border-gray-100 flex flex-col
@@ -31,7 +33,6 @@ const Sidebar = ({ isOpen, onClose }) => {
           md:relative md:translate-x-0 md:flex md:z-auto
         `}
       >
-        {/* Brand */}
         <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100">
           <div className="flex items-center gap-2">
             <TrendingUp className="w-6 h-6 text-primary-600" />
@@ -45,7 +46,6 @@ const Sidebar = ({ isOpen, onClose }) => {
           </button>
         </div>
 
-        {/* Navigation */}
         <nav className="flex-1 px-3 py-4">
           {navItems.map((item) => (
             <NavLink
@@ -66,7 +66,6 @@ const Sidebar = ({ isOpen, onClose }) => {
           ))}
         </nav>
 
-        {/* Logout */}
         <div className="p-3 border-t border-gray-100">
           <button
             onClick={logout}

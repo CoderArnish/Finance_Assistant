@@ -17,7 +17,19 @@ export default defineConfig({
         changeOrigin: true,
         secure: false,
         rewrite: (path) => path
-      }
+      },
+      '/accounts': {
+        target: 'http://localhost:8080',
+        changeOrigin: true,
+        secure: false,
+        rewrite: (path) => path
+      },
+      '/budgets': {
+        target: 'http://localhost:8080',
+        changeOrigin: true,
+        secure: false,
+        rewrite: (path) => path
+      },
     }
   }
 })

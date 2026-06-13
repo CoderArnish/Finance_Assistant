@@ -27,13 +27,31 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
             "AND (:endDate IS NULL OR t.date <= :endDate) " +
             "ORDER BY t.date DESC")
     List<Transaction> findByUserWithFilters(
-            @Param("user") User user,
-            @Param("category") String category,
-            @Param("type") TransactionType type,
-            @Param("startDate") LocalDate startDate,
-            @Param("endDate") LocalDate endDate
+            @Param("user")      User             user,
+            @Param("category")  String           category,
+            @Param("type")      TransactionType  type,
+            @Param("startDate") LocalDate        startDate,
+            @Param("endDate")   LocalDate        endDate
     );
 
-    @Query("SELECT COALESCE(SUM(t.amount), 0) FROM Transaction t WHERE t.user = :user AND t.type = :type")
-    Double sumByUserAndType(@Param("user") User user, @Param("type") TransactionType type);
+    @Query("SELECT COALESCE(SUM(t.amount), 0) FROM Transaction t " +
+            "WHERE t.user = :user AND t.type = :type")
+    Double sumByUserAndType(
+            @Param("user") User user,
+            @Param("type") TransactionType type
+    );
+
+    // ── NEW ── used by BudgetService to compute spending per budget period
+    @Query("SELECT COALESCE(SUM(t.amount), 0) FROM Transaction t " +
+            "WHERE t.user = :user " +
+            "AND t.type = 'EXPENSE' " +
+            "AND t.category = :category " +
+            "AND t.date >= :startDate " +
+            "AND t.date <= :endDate")
+    Double sumExpensesByUserAndCategoryBetween(
+            @Param("user")      User      user,
+            @Param("category")  String    category,
+            @Param("startDate") LocalDate startDate,
+            @Param("endDate")   LocalDate endDate
+    );
 }
