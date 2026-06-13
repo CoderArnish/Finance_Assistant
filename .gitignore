@@ -1,0 +1,23 @@
+# macOS
+.DS_Store
+**/.DS_Store
+
+# Node
+node_modules/
+dist/
+dist-ssr/
+.env
+.env.local
+
+# Maven / Java build
+target/
+.mvn/wrapper/maven-wrapper.jar
+!**/src/main/**/target/
+!**/src/test/**/target/
+
+# Editors / IDEs
+.vscode/
+.idea
+*.iws
+*.iml
+*.ipr
