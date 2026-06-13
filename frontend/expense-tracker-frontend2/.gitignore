@@ -22,3 +22,15 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+# ── macOS ──
+**/.DS_Store
+
+# ── Frontend ──
+node_modules/
+dist/
+.env
+.env.local
+
+# ── Sensitive config (never commit this) ──
+**/application-prod.properties
+**/application-local.properties
