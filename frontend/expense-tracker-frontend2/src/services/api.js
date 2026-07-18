@@ -31,8 +31,11 @@ api.interceptors.response.use(
 );
 
 export const authAPI = {
-  register: (data)       => api.post('/auth/register', data),
-  login:    (data)       => api.post('/auth/login',    data),
+  register:       (data) => api.post('/auth/register',        data),
+  login:          (data) => api.post('/auth/login',           data),
+  forgotPassword: (data) => api.post('/auth/forgot-password', data),
+  verifyOtp:      (data) => api.post('/auth/verify-otp',      data),
+  resetPassword:  (data) => api.post('/auth/reset-password',  data),
 };
 
 export const transactionAPI = {
@@ -46,16 +49,22 @@ export const transactionAPI = {
 export const accountAPI = {
   getAll:  ()            => api.get('/accounts'),
   create:  (data)        => api.post('/accounts',      data),
-  update:  (id, data)    => api.put(`/accounts/${id}`, data),   // ← NEW
-  delete:  (id)          => api.delete(`/accounts/${id}`),      // ← NEW
+  update:  (id, data)    => api.put(`/accounts/${id}`, data),
+  delete:  (id)          => api.delete(`/accounts/${id}`),
 };
 
-// ── NEW ──
 export const budgetAPI = {
   getAll:  ()            => api.get('/budgets'),
   create:  (data)        => api.post('/budgets',      data),
   update:  (id, data)    => api.put(`/budgets/${id}`, data),
   delete:  (id)          => api.delete(`/budgets/${id}`),
+};
+
+// ── NEW: user/settings endpoints ──────────────────────────────────────────
+export const userAPI = {
+  updateProfile:  (data) => api.put('/user/profile',         data),
+  changePassword: (data) => api.put('/user/change-password', data),
+  deleteAccount:  ()     => api.delete('/user/account'),
 };
 
 export default api;

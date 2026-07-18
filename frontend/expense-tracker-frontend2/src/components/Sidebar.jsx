@@ -2,15 +2,15 @@ import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import {
-  LayoutDashboard, Receipt, Wallet, Target, TrendingUp, X, LogOut,
+  LayoutDashboard, Receipt, Wallet, Target, TrendingUp, X, LogOut, Settings,
 } from 'lucide-react';
 
-// ── UPDATED: added Accounts + Budgets ──
 const navItems = [
   { label: 'Dashboard',    icon: LayoutDashboard, to: '/dashboard'    },
   { label: 'Transactions', icon: Receipt,          to: '/transactions' },
   { label: 'Accounts',     icon: Wallet,           to: '/accounts'    },
   { label: 'Budgets',      icon: Target,           to: '/budgets'     },
+  { label: 'Settings',     icon: Settings,         to: '/settings'    },
 ];
 
 const Sidebar = ({ isOpen, onClose }) => {

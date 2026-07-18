@@ -30,6 +30,12 @@ export default defineConfig({
         secure: false,
         rewrite: (path) => path
       },
+      '/user': {
+        target: 'http://localhost:8080',
+        changeOrigin: true,
+        secure: false,
+        rewrite: (path) => path
+      },
     }
   }
 })
