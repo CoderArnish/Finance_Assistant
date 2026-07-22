@@ -16,6 +16,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.Map;
+import java.util.Set;
 import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -34,10 +35,18 @@ public class AuthService {
     // For production you'd persist this in Redis or a DB table.
     private record OtpEntry(String otp, LocalDateTime expiry) {}
     private final Map<String, OtpEntry> otpStore = new ConcurrentHashMap<>();
+    private final java.util.Set<String> verifiedEmails = ConcurrentHashMap.newKeySet();
     private static final int OTP_VALID_MINUTES = 10;
 
     // ── Register ─────────────────────────────────────────────────────────────
     public AuthResponse register(RegisterRequest request) {
+
+        String email = request.getEmail().toLowerCase();
+
+        if (!verifiedEmails.contains(email)) {
+            throw new IllegalArgumentException("Please verify your email first.");
+        }
+
         if (userRepository.findByEmail(request.getEmail()).isPresent()) {
             throw new IllegalArgumentException("Email already registered.");
         }
@@ -49,6 +58,8 @@ public class AuthService {
                 .build();
 
         userRepository.save(user);
+        verifiedEmails.remove(email);
+        otpStore.remove(email);
 
         UserDetails userDetails = userDetailsService.loadUserByUsername(user.getEmail());
         String token = jwtUtil.generateToken(userDetails);
@@ -95,6 +106,22 @@ public class AuthService {
         });
     }
 
+    // new Resgistration otp
+    public void sendRegistrationOtp(String name, String email) {
+        if (userRepository.findByEmail(email.toLowerCase()).isPresent()) {
+            throw new IllegalArgumentException("Email already registered.");
+        }
+
+        String otp = String.format("%06d", new Random().nextInt(1_000_000));
+
+        otpStore.put(
+                email.toLowerCase(),
+                new OtpEntry(otp, LocalDateTime.now().plusMinutes(OTP_VALID_MINUTES))
+        );
+
+        emailService.sendOtpEmail(name, email, otp);
+    }
+
     // ── Verify OTP ────────────────────────────────────────────────────────────
     public void verifyOtp(String email, String otp) {
         OtpEntry entry = otpStore.get(email.toLowerCase());
@@ -105,6 +132,9 @@ public class AuthService {
             throw new IllegalArgumentException("Invalid code. Please check and try again.");
         }
         // OTP is valid — don't remove yet; resetPassword will consume it
+
+        // Mark email as verified
+        verifiedEmails.add(email.toLowerCase());
     }
 
     // ── Reset Password ────────────────────────────────────────────────────────

@@ -1,11 +1,6 @@
 package com.todo.expencetracker2.controller;
 
-import com.todo.expencetracker2.dto.AuthRequest;
-import com.todo.expencetracker2.dto.AuthResponse;
-import com.todo.expencetracker2.dto.ForgotPasswordRequest;
-import com.todo.expencetracker2.dto.RegisterRequest;
-import com.todo.expencetracker2.dto.ResetPasswordRequest;
-import com.todo.expencetracker2.dto.VerifyOtpRequest;
+import com.todo.expencetracker2.dto.*;
 import com.todo.expencetracker2.service.AuthService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -56,6 +51,22 @@ public class AuthController {
         } catch (Exception e) {
             return ResponseEntity.ok(Map.of("message", "If that email is registered, a reset code has been sent."));
         }
+    }
+
+    // new registration email conformation flow
+
+    @PostMapping("/send-registration-otp")
+    public ResponseEntity<?> sendRegistrationOtp(
+           @Valid @RequestBody RegistrationOtpRequest request) {
+
+        authService.sendRegistrationOtp(
+                request.getName(),
+                request.getEmail()
+        );
+
+        return ResponseEntity.ok(
+                Map.of("message", "OTP sent successfully.")
+        );
     }
 
     @PostMapping("/verify-otp")

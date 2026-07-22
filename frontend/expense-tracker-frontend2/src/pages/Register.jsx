@@ -1,181 +1,244 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { authAPI } from '../services/api';
-import { TrendingUp, Eye, EyeOff, Loader2 } from 'lucide-react';
+import { useAuth } from '../hooks/useAuth';
+import { TrendingUp, Loader2, Eye, EyeOff, CheckCircle } from 'lucide-react';
+
+// ── Outside component to prevent remount on keystroke ──
+const PasswordInput = ({ id, name, value, onChange, placeholder }) => {
+  const [show, setShow] = useState(false);
+  return (
+    <div className="relative">
+      <input
+        id={id}
+        name={name}
+        type={show ? 'text' : 'password'}
+        className="input-field pr-10"
+        placeholder={placeholder}
+        value={value}
+        onChange={onChange}
+        autoComplete="new-password"
+      />
+      <button
+        type="button"
+        onClick={() => setShow((s) => !s)}
+        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+        tabIndex={-1}
+      >
+        {show ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+      </button>
+    </div>
+  );
+};
 
 const Register = () => {
   const navigate = useNavigate();
+  const { login } = useAuth();
+
+  // step: 'form' | 'verify'
+  const [step, setStep] = useState('form');
 
   const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    password: '',
-    confirmPassword: '',
+    name: '', email: '', password: '', confirmPassword: '',
   });
-  const [errors, setErrors] = useState({});
+  const [otp, setOtp]             = useState('');
+  const [errors, setErrors]       = useState({});
   const [serverError, setServerError] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading]     = useState(false);
 
   const validate = () => {
-    const newErrors = {};
-    if (!formData.name.trim()) newErrors.name = 'Name is required';
-    if (!formData.email.trim()) newErrors.email = 'Email is required';
-    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) newErrors.email = 'Invalid email format';
-    if (!formData.password) newErrors.password = 'Password is required';
-    else if (formData.password.length < 6) newErrors.password = 'Password must be at least 6 characters';
-    if (formData.password !== formData.confirmPassword) newErrors.confirmPassword = 'Passwords do not match';
-    return newErrors;
+    const e = {};
+    if (!formData.name.trim())       e.name    = 'Name is required';
+    if (!formData.email.trim())      e.email   = 'Email is required';
+    else if (!/\S+@\S+\.\S+/.test(formData.email)) e.email = 'Invalid email format';
+    if (!formData.password)          e.password = 'Password is required';
+    else if (formData.password.length < 6) e.password = 'Must be at least 6 characters';
+    if (!formData.confirmPassword)   e.confirmPassword = 'Please confirm your password';
+    else if (formData.password !== formData.confirmPassword) e.confirmPassword = 'Passwords do not match';
+    return e;
   };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-    if (errors[name]) setErrors((prev) => ({ ...prev, [name]: '' }));
+    setFormData((p) => ({ ...p, [name]: value }));
+    if (errors[name]) setErrors((p) => ({ ...p, [name]: '' }));
     setServerError('');
   };
 
-  const handleSubmit = async (e) => {
+  // ── Step 1: send OTP ──────────────────────────────────────────────────────
+  const handleSendOtp = async (e) => {
     e.preventDefault();
-    const validationErrors = validate();
-    if (Object.keys(validationErrors).length > 0) {
-      setErrors(validationErrors);
-      return;
-    }
+    const errs = validate();
+    if (Object.keys(errs).length) { setErrors(errs); return; }
 
     setLoading(true);
     setServerError('');
-
     try {
-      await authAPI.register({
-        name: formData.name,
-        email: formData.email,
-        password: formData.password,
-      });
-      navigate('/login', {
-        state: { message: 'Registration successful! Please login.' }
-      });
+      await authAPI.sendRegistrationOtp({ name: formData.name.trim(),email: formData.email.trim() });
+      setStep('verify');
     } catch (err) {
-      const message = err.response?.data?.message || 'Registration failed. Please try again.';
-      setServerError(message);
+      // Send OTP for email verification
+      setServerError(err.response?.data?.message || 'Failed to send code. Please try again.');
     } finally {
       setLoading(false);
     }
   };
 
+  // ── Step 2: verify OTP then register ─────────────────────────────────────
+  const handleVerifyAndRegister = async (e) => {
+    e.preventDefault();
+    if (!otp.trim() || otp.length < 6) {
+      setServerError('Enter the 6-digit code sent to your email.');
+      return;
+    }
+    setLoading(true);
+    setServerError('');
+    try {
+      // Verify OTP first
+      await authAPI.verifyOtp({ email: formData.email.trim(), otp: otp.trim() });
+      // If OTP valid, create account
+      const res = await authAPI.register({
+        name:     formData.name.trim(),
+        email:    formData.email.trim(),
+        password: formData.password,
+      });
+      login(res.data.token, res.data.user);
+      navigate('/dashboard', { replace: true });
+    } catch (err) {
+      setServerError(err.response?.data?.message || 'Invalid or expired code. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ── Shared shell ──────────────────────────────────────────────────────────
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary-50 to-blue-100 flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        {/* Logo */}
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-14 h-14 bg-primary-600 rounded-2xl mb-4 shadow-lg">
-            <TrendingUp className="w-7 h-7 text-white" />
-          </div>
-          <h1 className="text-2xl font-bold text-gray-900">Create Account</h1>
-          <p className="text-gray-500 mt-1 text-sm">Start tracking your expenses today</p>
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+      <div className="w-full max-w-sm">
+        <div className="flex items-center justify-center gap-2 mb-8">
+          <TrendingUp className="w-7 h-7 text-primary-600" />
+          <span className="text-2xl font-bold text-gray-900">ExpenseTracker</span>
         </div>
 
-        {/* Card */}
         <div className="card">
-          {serverError && (
-            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">
-              {serverError}
-            </div>
-          )}
+          {step === 'form' ? (
+            <>
+              <h1 className="text-xl font-bold text-gray-900 mb-1">Create account</h1>
+              <p className="text-sm text-gray-500 mb-6">We'll send a code to verify your email</p>
 
-          <form onSubmit={handleSubmit} noValidate>
-            <div className="space-y-4">
-              {/* Name */}
-              <div>
-                <label className="label" htmlFor="name">Full Name</label>
-                <input
-                  id="name"
-                  name="name"
-                  type="text"
-                  className="input-field"
-                  placeholder="John Doe"
-                  value={formData.name}
-                  onChange={handleChange}
-                  autoComplete="name"
-                />
-                {errors.name && <p className="error-text">{errors.name}</p>}
-              </div>
-
-              {/* Email */}
-              <div>
-                <label className="label" htmlFor="email">Email Address</label>
-                <input
-                  id="email"
-                  name="email"
-                  type="email"
-                  className="input-field"
-                  placeholder="john@example.com"
-                  value={formData.email}
-                  onChange={handleChange}
-                  autoComplete="email"
-                />
-                {errors.email && <p className="error-text">{errors.email}</p>}
-              </div>
-
-              {/* Password */}
-              <div>
-                <label className="label" htmlFor="password">Password</label>
-                <div className="relative">
-                  <input
-                    id="password"
-                    name="password"
-                    type={showPassword ? 'text' : 'password'}
-                    className="input-field pr-10"
-                    placeholder="Min 6 characters"
-                    value={formData.password}
-                    onChange={handleChange}
-                    autoComplete="new-password"
-                  />
-                  <button
-                    type="button"
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                    onClick={() => setShowPassword((v) => !v)}
-                  >
-                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
+              {serverError && (
+                <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">
+                  {serverError}
                 </div>
-                {errors.password && <p className="error-text">{errors.password}</p>}
+              )}
+
+              <form onSubmit={handleSendOtp} noValidate className="space-y-4">
+                <div>
+                  <label className="label" htmlFor="name">Full Name</label>
+                  <input
+                    id="name" name="name" type="text" className="input-field"
+                    placeholder="Your full name"
+                    value={formData.name} onChange={handleChange} autoFocus
+                  />
+                  {errors.name && <p className="error-text">{errors.name}</p>}
+                </div>
+
+                <div>
+                  <label className="label" htmlFor="email">Email</label>
+                  <input
+                    id="email" name="email" type="email" className="input-field"
+                    placeholder="you@example.com"
+                    value={formData.email} onChange={handleChange}
+                  />
+                  {errors.email && <p className="error-text">{errors.email}</p>}
+                </div>
+
+                <div>
+                  <label className="label" htmlFor="password">Password</label>
+                  <PasswordInput
+                    id="password" name="password"
+                    placeholder="Min. 6 characters"
+                    value={formData.password} onChange={handleChange}
+                  />
+                  {errors.password && <p className="error-text">{errors.password}</p>}
+                </div>
+
+                <div>
+                  <label className="label" htmlFor="confirmPassword">Confirm Password</label>
+                  <PasswordInput
+                    id="confirmPassword" name="confirmPassword"
+                    placeholder="Repeat password"
+                    value={formData.confirmPassword} onChange={handleChange}
+                  />
+                  {errors.confirmPassword && <p className="error-text">{errors.confirmPassword}</p>}
+                </div>
+
+                <button
+                  type="submit" disabled={loading}
+                  className="btn-primary w-full flex items-center justify-center gap-2"
+                >
+                  {loading && <Loader2 className="w-4 h-4 animate-spin" />}
+                  {loading ? 'Sending Code…' : 'Continue'}
+                </button>
+              </form>
+            </>
+          ) : (
+            <>
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-9 h-9 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0">
+                  <CheckCircle className="w-5 h-5 text-emerald-600" />
+                </div>
+                <div>
+                  <h1 className="text-lg font-bold text-gray-900">Verify your email</h1>
+                  <p className="text-xs text-gray-500">Code sent to {formData.email}</p>
+                </div>
               </div>
 
-              {/* Confirm Password */}
-              <div>
-                <label className="label" htmlFor="confirmPassword">Confirm Password</label>
-                <input
-                  id="confirmPassword"
-                  name="confirmPassword"
-                  type="password"
-                  className="input-field"
-                  placeholder="Repeat password"
-                  value={formData.confirmPassword}
-                  onChange={handleChange}
-                  autoComplete="new-password"
-                />
-                {errors.confirmPassword && <p className="error-text">{errors.confirmPassword}</p>}
-              </div>
-            </div>
+              {serverError && (
+                <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">
+                  {serverError}
+                </div>
+              )}
 
-            <button
-              type="submit"
-              disabled={loading}
-              className="btn-primary w-full mt-6 flex items-center justify-center gap-2"
-            >
-              {loading && <Loader2 className="w-4 h-4 animate-spin" />}
-              {loading ? 'Creating Account...' : 'Create Account'}
-            </button>
-          </form>
+              <form onSubmit={handleVerifyAndRegister} noValidate className="space-y-4">
+                <div>
+                  <label className="label" htmlFor="otp">6-Digit Code</label>
+                  <input
+                    id="otp" type="text" inputMode="numeric" maxLength={6}
+                    className="input-field tracking-widest text-center text-lg font-mono"
+                    placeholder="000000"
+                    value={otp}
+                    onChange={(e) => { setOtp(e.target.value.replace(/\D/g, '')); setServerError(''); }}
+                    autoFocus
+                  />
+                </div>
 
-          <p className="text-center text-sm text-gray-500 mt-4">
-            Already have an account?{' '}
-            <Link to="/login" className="text-primary-600 hover:text-primary-700 font-medium">
-              Sign in
-            </Link>
-          </p>
+                <button
+                  type="submit" disabled={loading}
+                  className="btn-primary w-full flex items-center justify-center gap-2"
+                >
+                  {loading && <Loader2 className="w-4 h-4 animate-spin" />}
+                  {loading ? 'Creating Account…' : 'Verify & Create Account'}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => { setStep('form'); setOtp(''); setServerError(''); }}
+                  className="btn-secondary w-full text-sm"
+                >
+                  ← Change email or details
+                </button>
+              </form>
+            </>
+          )}
         </div>
+
+        <p className="text-center text-sm text-gray-500 mt-6">
+          Already have an account?{' '}
+          <Link to="/login" className="text-primary-600 hover:underline font-medium">
+            Sign in
+          </Link>
+        </p>
       </div>
     </div>
   );
